@@ -279,10 +279,46 @@ class ConnGUI():
         self.root.geometry("360x120")
 
     def start_stream(self):
-        pass
+        self.btn_start_stream["state"] = "disabled"
+        self.btn_stop_stream["state"] = "active"
+
+        self.serial.t1 = threading.Thread(
+            target=self.serial.SerialDataStream, args=(self,), daemon=True)
+        self.serial.t1.start()
+
+    def UpdateChart(self):
+        try:
+            # mydisplayChannels = []
+            for MyChannelOpt in range(len(self.chartMaster.ViewVar)):
+                self.chartMaster.figs[MyChannelOpt][1].clear()
+                for cnt, state in enumerate(self.chartMaster.ViewVar[MyChannelOpt]):
+                    if state.get():
+                        MyChannel = self.chartMaster.OptionVar[MyChannelOpt][cnt].get()
+                        # mydisplayChannels.append(MyChannel)
+                        ChannelIndex = self.data.ChannelNum[MyChannel]
+
+                        FuncName = self.chartMaster.FunVar[MyChannelOpt][cnt].get()
+
+                        self.chart = self.chartMaster.figs[MyChannelOpt][1]
+                        self.color = self.data.ChannelColor[MyChannel]
+                        self.y = self.data.YDisplay[ChannelIndex]
+                        self.x = self.data.XDisplay
+                        self.data.FunctionMaster[FuncName](self)
+
+                self.chartMaster.figs[MyChannelOpt][1].grid(
+                    color='b', linestyle='-', linewidth=0.2)
+                self.chartMaster.figs[MyChannelOpt][0].canvas.draw()
+            # print(mydisplayChannels)
+        except Exception as e:
+            print(e)
+        if self.serial.threading:
+            self.root.after(40, self.UpdateChart)
 
     def stop_stream(self):
-        pass
+        self.btn_start_stream["state"] = "active"
+        self.btn_stop_stream["state"] = "disabled"
+        self.serial.threading = False
+        self.serial.SerialStop(self)
 
     def new_chart(self):
         '''
@@ -486,7 +522,7 @@ class DisGUI():
     def ChannelFunc(self, Frame, ChannelFrameNumber):
         self.FunVar[ChannelFrameNumber].append(StringVar())
 
-        bds = self.data.FunctionMaster
+        bds = [func for func in self.data.FunctionMaster.keys()]
 
         self.FunVar[ChannelFrameNumber][len(
             self.OptionVar[ChannelFrameNumber]) - 1].set(bds[0])
