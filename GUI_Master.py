@@ -7,6 +7,8 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
                                                NavigationToolbar2Tk)
 from functools import partial
 
+import numpy as np
+
 
 class RootGUI():
     def __init__(self, serial, data):
@@ -177,6 +179,12 @@ class ComGui():
                 messagebox.showerror("showerror", ErrorMsg)
         else:
             self.serial.threading = False
+            self.conn.save = False
+            try:
+                while len(self.conn.chartMaster.frames) > 0:
+                    self.conn.kill_chart()
+            except:
+                pass
             # Closing the Serial COM
             # Close the serial communication
             self.serial.SerialClose(self)
@@ -202,6 +210,7 @@ class ConnGUI():
         self.root = root
         self.serial = serial
         self.data = data
+        self.save = False
 
         # Build ConnGui Static Elements
         self.frame = LabelFrame(root, text="Connection Manager",
@@ -354,7 +363,10 @@ class ConnGUI():
             pass
 
     def save_data(self):
-        pass
+        if self.save:
+            self.save = False
+        else:
+            self.save = True
 
 class DisGUI():
     def __init__(self, root, serial, data):

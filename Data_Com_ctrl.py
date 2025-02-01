@@ -1,6 +1,12 @@
 import time
 import numpy as np
 
+from scipy.signal import savgol_filter
+from scipy import signal
+
+from datetime import datetime
+import csv
+
 class DataMaster():
     def __init__(self):
         self.sync = "#?#\n"
@@ -16,7 +22,10 @@ class DataMaster():
 
         self.FunctionMaster = {
             "RowData": self.RowData,
-            "VoltageDisplay": self.VoltData
+            "VoltageDisplay": self.VoltData,
+            "SavgolFilter": self.SavgolFilter,
+            "DigitalFilter": self.DigitalFilter,
+            "ColorFilter": self.ColorFilter,
         }
 
         self.DisplayTimeRange = 5
@@ -41,6 +50,18 @@ class DataMaster():
             'Ch6': 'black',
             'Ch7': 'white'
         }
+
+    def FileNameFunc(self):
+        now = datetime.now()
+        self.filename = now.strftime("%Y%m%d%H%M%S") + ".csv"
+
+    def SaveData(self, gui):
+        data = [elt for elt in self.IntMsg]
+        data.insert(0, self.XData[len(self.XData) - 1])
+        if gui.save:
+            with open(self.filename, 'a', newline='') as f:
+                data_writer = csv.writer(f)
+                data_writer.writerow(data)
 
     def DecodeMsg(self):
         temp = self.RowMsg.decode('utf8')
@@ -114,3 +135,45 @@ class DataMaster():
     def VoltData(self, gui):
         gui.chart.plot(gui.x, (gui.y / 4096) * 3.3, color=gui.color,
                        dash_capstyle='projecting', linewidth=1)
+
+    def SavgolFilter(self, gui):
+        x = gui.x
+        y = gui.y
+        w = savgol_filter(y, 1001, 2)
+        gui.chart.plot(x, w, color="#db2775",
+                       dash_capstyle='projecting', linewidth=2)
+
+    def DigitalFilter(self, gui):
+        x = gui.x
+        y = gui.y
+        b, a = signal.ellip(4, 0.01, 120, 0.125)
+        fgust = signal.filtfilt(b, a, y, method="gust")
+        gui.chart.plot(x, fgust, color="#1cbda5",
+                       dash_capstyle='projecting', linewidth=2)
+
+    def ColorFilter(self, gui):
+        '''
+        Mehtod that will display a different color based on the value
+        '''
+        limit = 2000
+        y = gui.y
+        x = gui.x
+        chart = gui.chart
+        color_master = np.array(
+            ['r' if k > limit else 'g' for k in y])
+        limit_array = np.array(
+            [limit for k in range(len(x))])
+        chart.plot(x, limit_array, c='blue')
+        color_0 = color_master[0]
+        start_seg = 0
+        for cnt in range(len(color_master)):
+            if color_0 == color_master[cnt + 1]:
+                color_0 = color_master[cnt + 1]
+            else:
+                chart.plot(x[start_seg:cnt + 1], y[start_seg:cnt + 1], c=color_0)
+                start_seg = cnt
+                color_0 = color_master[cnt + 1]
+            if (cnt + 2) == len(color_master):
+                chart.plot(x[start_seg:cnt + 1], y[start_seg:cnt + 1], c=color_0)
+                break
+        chart.set_ylim([0, 4096])

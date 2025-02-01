@@ -1,6 +1,7 @@
 import serial.tools.list_ports
 # Secure the UART serial communication with MCU
 import time
+import threading
 
 
 class SerialCtrl():
@@ -85,6 +86,7 @@ class SerialCtrl():
                         gui.data.SynchChannel = int(gui.data.msg[1])
                         gui.data.GenChannels()
                         gui.data.buildYdata()
+                        gui.data.FileNameFunc()
                         print(gui.data.Channels, gui.data.YData)
                         self.threading = False
                         break
@@ -129,5 +131,9 @@ class SerialCtrl():
                     # Ysam = [Ys[len(gui.data.XData) - 1] for Ys in gui.data.YData]
                     gui.data.AdjustData()
                     # print(f"X Len: {len(gui.data.XData)}, Xstart:{gui.data.XData[0]}  Xend : {gui.data.XData[len(gui.data.XData) - 1]}, Xrange: {gui.data.XData[len(gui.data.XData) - 1] - gui.data.XData[0]} Ydata len: {len(gui.data.YData[0])} Yval: : {Ysam} ")
+
+                    if gui.save:
+                        t1 = threading.Thread(target=gui.data.SaveData, args=(gui,), daemon=True)
+                        t1.start()
             except Exception as e:
                 print(e)
